@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { decryptCiphertext, encryptDataToCiphertext } = require('./securityUtil');
+const { decryptCiphertext, encryptDataToCiphertext, getHeader } = require('./securityUtil');
 
 const amountTable = {
     "19": {
@@ -252,29 +252,13 @@ const orderObject_shanjianqing = {
 // 定义API URL
 const createOrderUrl = 'https://mini.ecnu-api2.ziyun188.com/order/edit'; // 替换为你的API URL
 // 脚本运行需要修改五个地方
-// 1. header中的authorization
 // 2. hopeTime-期望时间点
 // 3. orderDate-预订场地时间
 // 4. orderTime-脚本开始时间，一般是当天中午12点
 // 5. 更换orderJson对象数据
-const header = {
-    "Host": "mini.ecnu-api2.ziyun188.com",
-    "Connection": "keep-alive",
-    "xweb_xhr": "1",
-    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZWNyZXRTdHIiOiI3YzhmNjAyNzRlMDg1MDE4OGMzN2I0NGNhMmQ1MjkxYjkxYTI0NjgwMTJjNDRkOTcxYmY2MmRmOGQ4MWM5OWZjIiwib3BlbmlkIjoib1ZXd1Y1ZUZnUmlUaVp3X1c4bDZPY0FhNl9mbyIsIm5hbWUiOiLmnY7ml6Xlh4wiLCJuaWNrTmFtZSI6IuW-ruS_oeeUqOaItyIsImF2YXRhciI6Imh0dHBzOi8vdGhpcmR3eC5xbG9nby5jbi9tbW9wZW4vdmlfMzIvUE9nRXdoNG1JSE80bmliSDBLbE1FQ05qakd4UVVxMjRaRWFHVDRwb0M2aWNSaWNjVkdLU3lYd2liY1BxNEJXbWlhSUd1RzFpY3d4YVFYNmdyQzlWZW1ab0o4cmcvMTMyIiwicm9sZSI6InVzZXIiLCJzZXgiOiIwIiwicGhvbmUiOiIxODgxNzg3Nzk4NiIsImJvb2tBdHRyIjoiMyIsImNvZGUiOiIiLCJpZENhcmQiOiI0NjkwMjMxOTk1MDYwMzAwOTgiLCJkZXB0IjoiIiwidW5pdCI6IiIsImFyZWEiOiLkuK3ljJciLCJtZW1vIjpudWxsLCJyZWdpc3RlclRpbWUiOiIyMDI0LTA0LTI5IDIwOjA4OjU5IiwicGFzc3dvcmQiOm51bGwsImlhdCI6MTc1Njk2NjA3OCwiZXhwIjoxNzU3NTcwODc4fQ.Wafn2kaXEoJfnbkTV0r1_478Pd3dBVQx-TwpVv7o7Pc",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c11)XWEB/11275",
-    "Content-Type": "application/json",
-    "Accept": "*/*",
-    "Sec-Fetch-Site": "cross-site",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Dest": "empty",
-    "Referer": "https://servicewechat.com/wx67e47bfe8318b823/41/page-frame.html",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Accept-Language": "zh-CN,zh;q=0.9"
-}
-const hopeTime = ["13"]
-const orderTime = new Date('2025-09-04T12:00:00').getTime()
-const orderDate = '2025-09-05'
+const hopeTime = ["19"]
+const orderTime = new Date('2025-09-25T12:00:01').getTime()
+const orderDate = '2025-09-26'
 const orderJson = orderObject
 function fetchAndLogData() {
     let current
@@ -289,9 +273,12 @@ function fetchAndLogData() {
     doExec(0)
 }
 
-function doExec(tryNum) {
+async function doExec(tryNum) {
     if (tryNum > 10) {
         return
+    }
+    if (tryNum > 0) {
+        await sleep(100)
     }
     hopeTime.forEach(time => {
         const amountInfo = amountTable[time]
@@ -306,7 +293,7 @@ function doExec(tryNum) {
         }
         console.info(new Date().toLocaleTimeString() + ' 即将抢: ' + time + "点的场地......")
         axios.post(createOrderUrl, postBody, {
-            headers: header
+            headers: getHeader()
         }).then(response => {
             if (JSON.stringify(response.data).startsWith("{")) {
                 const createResult = decryptCiphertext(response.data.ciphertext)
@@ -323,8 +310,13 @@ function doExec(tryNum) {
         .catch(error => {
             console.error("time: 【" + time + '】 Error fetching data. status is ' + error.response.status);
             console.error("time: 【" + time + '】 Error info: ' + JSON.stringify(error.response.data))
+            doExec(tryNum + 1)
         });
     })
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 // 立即执行一次请求
 fetchAndLogData();
